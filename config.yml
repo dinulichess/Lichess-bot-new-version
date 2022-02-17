@@ -14,6 +14,7 @@ engine:                      # Engine settings.
       standard:              # List of book file paths for variant standard.
         - Goi5.1.bin
         - Drawkiller_EloZoom_big.bin
+        - elo3300.bin
 #      atomic: # list of book file paths for variant atomic
 #      etc.
 #      use the same pattern for giveaway, crazyhouse, horde, kingofthehill, racingkings, 3check as well
