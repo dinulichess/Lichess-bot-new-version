@@ -137,10 +137,13 @@ def play_game(li, game_id, engine_factory, user_profile, config):
 
     if type(board).uci_variant=="chess":
         engine_path = os.path.join(cfg["dir"], cfg["name"])
+        bookname="Goi5.1.bin"
     elif type(board).uci_variant=="atomic":
         engine_path = os.path.join(cfg["dir"], cfg["lcname"])
+        bookname="bookchen.bin"
     else:
         engine_path = os.path.join(cfg["dir"], cfg["fairyname"])
+        bookname="bookchen.bin"
     engineeng = engine.SimpleEngine.popen_uci(engine_path)
 
     logger.info("+++ {}".format(game))
