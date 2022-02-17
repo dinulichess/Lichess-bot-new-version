@@ -4,8 +4,8 @@ url: "https://lichess.org/"  # Lichess base URL.
 engine:                      # Engine settings.
   dir: "./"                  # Directory containing engines, relative to this project.
   name: "chess-engine"    # Binary name of the engine to use.
-  lcname: "./engines/msf"
-  fairyname: "./engines/sf-fairy"
+  lcname: "/.engines/msf"
+  fairyname: "/.engines/sf-fairy"
   protocol: "uci"            # "uci" or "xboard"
   ponder: true               # Think on opponent's time.
   polyglot:
