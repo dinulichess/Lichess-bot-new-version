@@ -1,49 +1,51 @@
 import argparse
 import chess
-from chess.variant import find_variant
+from chess import engine
+from chess import variant
 import chess.polyglot
 import engine_wrapper
 import model
 import json
 import lichess
 import logging
-import logging.handlers
 import multiprocessing
+from multiprocessing import Process
+import traceback
 import logging_pool
 import signal
+import sys
 import time
 import backoff
-import sys
+import threading
 from config import load_config
 from conversation import Conversation, ChatLine
 from functools import partial
 from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError, ReadTimeout
 from urllib3.exceptions import ProtocolError
-from ColorLogger import enable_color_logging
 import os
 import threading
 
 logger = logging.getLogger(__name__)
 
-from http.client import RemoteDisconnected
+try:
+    from http.client import RemoteDisconnected
+    # New in version 3.5: Previously, BadStatusLine('') was raised.
+except ImportError:
+    from http.client import BadStatusLine as RemoteDisconnected
 
-__version__ = "1.2.0"
+__version__ = "1.1.5"
 
 terminated = False
-
 
 def signal_handler(signal, frame):
     global terminated
     logger.debug("Recieved SIGINT. Terminating client.")
     terminated = True
 
-
 signal.signal(signal.SIGINT, signal_handler)
-
 
 def is_final(exception):
     return isinstance(exception, HTTPError) and exception.response.status_code < 500
-
 
 def upgrade_account(li):
     if li.upgrade_to_bot_account() is None:
@@ -52,8 +54,8 @@ def upgrade_account(li):
     logger.info("Succesfully upgraded to Bot Account!")
     return True
 
-
 def watch_control_stream(control_queue, li):
+    logger.info("start")
     while not terminated:
         try:
             response = li.get_event_stream()
@@ -62,42 +64,10 @@ def watch_control_stream(control_queue, li):
                 if line:
                     event = json.loads(line.decode('utf-8'))
                     control_queue.put_nowait(event)
-                else:
-                    control_queue.put_nowait({"type": "ping"})
-        except Exception:
+                    logger.info(event)
+        except:
+            logger.info("except")
             pass
-
-
-def do_correspondence_ping(control_queue, period):
-    while not terminated:
-        time.sleep(period)
-        control_queue.put_nowait({"type": "correspondence_ping"})
-
-
-def listener_configurer(level, filename):
-    logging.basicConfig(level=level, filename=filename,
-                        format="%(asctime)-15s: %(message)s")
-    enable_color_logging(level)
-
-
-def logging_listener_proc(queue, configurer, level, log_filename):
-    configurer(level, log_filename)
-    logger = logging.getLogger()
-    while not terminated:
-        try:
-            logger.handle(queue.get())
-        except Exception:
-            pass
-
-
-def game_logging_configurer(queue, level):
-    if sys.platform == 'win32':
-        h = logging.handlers.QueueHandler(queue)
-        root = logging.getLogger()
-        root.handlers.clear()
-        root.addHandler(h)
-        root.setLevel(level)
-
 
 def start(li, user_profile, engine_factory, config):
     challenge_config = config["challenge"]
@@ -156,21 +126,19 @@ def play_game(li, game_id, engine_factory, user_profile, config):
     if timelim>=0.5 and timelim<=2:
         bullet=True
     time=round(timelim/150*60,1)
-    if time>9:
-        time=9
-    elif time<0.5:
-        time=0.5
+    if time>6:
+        time=6
+    elif time<0.3:
+        time=0.3
     if bullet:
-        time=0.5
+        time=0.2
     board = setup_board(game)
     cfg = config["engine"]
 
     if type(board).uci_variant=="chess":
         engine_path = os.path.join(cfg["dir"], cfg["name"])
-        
     elif type(board).uci_variant=="atomic":
-        engine_path = os.path.join(cfg["dir"], cfg["lcname"])"
-        
+        engine_path = os.path.join(cfg["dir"], cfg["lcname"])
     else:
         engine_path = os.path.join(cfg["dir"], cfg["fairyname"])
     engineeng = engine.SimpleEngine.popen_uci(engine_path)
@@ -275,7 +243,6 @@ def update_board(board, move):
         logger.debug('Ignoring illegal move {} on board {}'.format(move, board.fen()))
     return board
 
-
 def intro():
     return r"""
     .   _/|
@@ -285,8 +252,7 @@ def intro():
     .  )___(   Play on Lichess with a bot
     """ % __version__
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Play on Lichess with a bot')
     parser.add_argument('-u', action='store_true', help='Add this flag to upgrade your account to a bot account.')
     parser.add_argument('-v', action='store_true', help='Verbose output. Changes log level from INFO to DEBUG.')
@@ -294,10 +260,8 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--logfile', help="Log file to append logs to.", default=None)
     args = parser.parse_args()
 
-    logging_level = logging.DEBUG if args.v else logging.INFO
-    logging.basicConfig(level=logging_level, filename=args.logfile,
+    logging.basicConfig(level=logging.DEBUG if args.v else logging.INFO, filename=args.logfile,
                         format="%(asctime)-15s: %(message)s")
-    enable_color_logging(debug_lvl=logging_level)
     logger.info(intro())
     CONFIG = load_config(args.config or "./config.yml")
     li = lichess.Lichess(CONFIG["token"], CONFIG["url"], __version__)
@@ -307,11 +271,11 @@ if __name__ == "__main__":
     is_bot = user_profile.get("title") == "BOT"
     logger.info("Welcome {}!".format(username))
 
-    if args.u and not is_bot:
+    if is_bot is False:
         is_bot = upgrade_account(li)
 
     if is_bot:
         engine_factory = partial(engine_wrapper.create_engine, CONFIG)
-        start(li, user_profile, engine_factory, CONFIG, logging_level, args.logfile)
+        start(li, user_profile, engine_factory, CONFIG)
     else:
         logger.error("{} is not a bot account. Please upgrade it to a bot account!".format(user_profile["username"]))
