@@ -1,20 +1,16 @@
 import yaml
 import os
 import os.path
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 def load_config(config_file):
     with open(config_file) as stream:
         try:
             CONFIG = yaml.safe_load(stream)
         except Exception as e:
-            logger.error("There appears to be a syntax problem with your config.yml")
+            print("There appears to be a syntax problem with your config.yml")
             raise e
 
-        # [section, type, error message]
+        #[section, type, error message]
         sections = [["token", str, "Section `token` must be a string wrapped in quotes."],
                     ["url", str, "Section `url` must be a string wrapped in quotes."],
                     ["engine", dict, "Section `engine` must be a dictionary with indented keys followed by colons.."],
@@ -41,10 +37,10 @@ def load_config(config_file):
 
         engine = os.path.join(CONFIG["engine"]["dir"], CONFIG["engine"]["name"])
 
-        if not os.path.isfile(engine) and CONFIG["engine"]["protocol"] != "homemade":
+        if not os.path.isfile(engine):
             raise Exception("The engine %s file does not exist." % engine)
 
-        if not os.access(engine, os.X_OK) and CONFIG["engine"]["protocol"] != "homemade":
+        if not os.access(engine, os.X_OK):
             raise Exception("The engine %s doesn't have execute (x) permission. Try: chmod +x %s" % (engine, engine))
 
     return CONFIG
