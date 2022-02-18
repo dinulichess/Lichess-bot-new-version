@@ -443,7 +443,8 @@ def intro():
     """ % __version__
 
 
-if __name__ == "__main__":
+
+if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Play on Lichess with a bot')
     parser.add_argument('-u', action='store_true', help='Add this flag to upgrade your account to a bot account.')
     parser.add_argument('-v', action='store_true', help='Verbose output. Changes log level from INFO to DEBUG.')
@@ -451,10 +452,8 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--logfile', help="Log file to append logs to.", default=None)
     args = parser.parse_args()
 
-    logging_level = logging.DEBUG if args.v else logging.INFO
-    logging.basicConfig(level=logging_level, filename=args.logfile,
+    logging.basicConfig(level=logging.DEBUG if args.v else logging.INFO, filename=args.logfile,
                         format="%(asctime)-15s: %(message)s")
-    enable_color_logging(debug_lvl=logging_level)
     logger.info(intro())
     CONFIG = load_config(args.config or "./config.yml")
     li = lichess.Lichess(CONFIG["token"], CONFIG["url"], __version__)
@@ -464,11 +463,11 @@ if __name__ == "__main__":
     is_bot = user_profile.get("title") == "BOT"
     logger.info("Welcome {}!".format(username))
 
-    if args.u and not is_bot:
+    if is_bot is False:
         is_bot = upgrade_account(li)
 
     if is_bot:
         engine_factory = partial(engine_wrapper.create_engine, CONFIG)
-        start(li, user_profile, engine_factory, CONFIG, logging_level, args.logfile)
+        start(li, user_profile, engine_factory, CONFIG)
     else:
         logger.error("{} is not a bot account. Please upgrade it to a bot account!".format(user_profile["username"]))
