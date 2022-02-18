@@ -466,8 +466,9 @@ if __name__=="__main__":
     if is_bot is False:
         is_bot = upgrade_account(li)
 
-    if is_bot:
+     if is_bot:
         engine_factory = partial(engine_wrapper.create_engine, CONFIG)
-        start(li, user_profile, engine_factory, CONFIG)
+        start(li, user_profile, engine_factory, CONFIG, logging_level, args.logfile)
     else:
         logger.error("{} is not a bot account. Please upgrade it to a bot account!".format(user_profile["username"]))
+        
