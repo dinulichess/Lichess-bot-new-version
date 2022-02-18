@@ -413,25 +413,30 @@ def setup_board(game):
     elif game.variant_name == "From Position":
         board = chess.Board(game.initial_fen)
     else:
-        VariantBoard = find_variant(game.variant_name)
+        VariantBoard = variant.find_variant(game.variant_name)
         board = VariantBoard()
-
-    for move in game.state["moves"].split():
-        try:
-            board.push_uci(move)
-        except ValueError as e:
-            logger.debug("Ignoring illegal move {} on board {} ({})".format(move, board.fen(), e))
+    moves = game.state["moves"].split()
+    for move in moves:
+        board = update_board(board, move)
 
     return board
 
 
-def is_engine_move(game, board):
-    return game.is_white == (board.turn == chess.WHITE)
+def is_engine_move(game, moves):
+    return game.is_white == is_white_to_move(game, moves)
 
 
 def is_game_over(game):
     return game.state["status"] != "started"
 
+
+def update_board(board, move):
+    uci_move = chess.Move.from_uci(move)
+    if board.is_legal(uci_move):
+        board.push(uci_move)
+    else:
+        logger.debug('Ignoring illegal move {} on board {}'.format(move, board.fen()))
+    return board
 
 def intro():
     return r"""
@@ -441,8 +446,6 @@ def intro():
     .  //__\
     .  )___(   Play on Lichess with a bot
     """ % __version__
-
-
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Play on Lichess with a bot')
@@ -468,7 +471,6 @@ if __name__=="__main__":
 
     if is_bot:
         engine_factory = partial(engine_wrapper.create_engine, CONFIG)
-        start(li, user_profile, engine_factory, CONFIG, logging_level, args.logfile)
+        start(li, user_profile, engine_factory, CONFIG)
     else:
         logger.error("{} is not a bot account. Please upgrade it to a bot account!".format(user_profile["username"]))
-        
