@@ -1,27 +1,32 @@
 import argparse
 import chess
-from chess.variant import find_variant
+from chess import engine
+from chess import variant
 import chess.polyglot
 import engine_wrapper
 import model
 import json
 import lichess
 import logging
-import logging.handlers
 import multiprocessing
+from multiprocessing import Process
+import traceback
 import logging_pool
 import signal
+import sys
 import time
 import backoff
-import sys
+import threading
 from config import load_config
 from conversation import Conversation, ChatLine
 from functools import partial
 from requests.exceptions import ChunkedEncodingError, ConnectionError, HTTPError, ReadTimeout
 from urllib3.exceptions import ProtocolError
-from ColorLogger import enable_color_logging
+import os
+import threading
 
 logger = logging.getLogger(__name__)
+
 
 from http.client import RemoteDisconnected
 
@@ -228,6 +233,20 @@ def play_game(li, game_id, control_queue, engine_factory, user_profile, config, 
     engine = engine_factory()
     engine.get_opponent_info(game)
     conversation = Conversation(game, engine, li, __version__, challenge_queue)
+    
+    board = setup_board(game)
+    cfg = config["engine"]
+
+    if type(board).uci_variant=="chess":
+        engine_path = os.path.join(cfg["dir"], cfg["name"])
+        bookname="book.bin"
+    elif type(board).uci_variant=="atomic":
+        engine_path = os.path.join(cfg["dir"], cfg["lcname"])
+        bookname="bookchen.bin"
+    else:
+        engine_path = os.path.join(cfg["dir"], cfg["fairyname"])
+        bookname="bookchen.bin"
+    engineeng = engine.SimpleEngine.popen_uci(engine_path)
 
     logger.info("+++ {}".format(game))
 
